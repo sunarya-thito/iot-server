@@ -1,0 +1,23 @@
+{
+  "name": "iot-server",
+  "type": "module",
+  "version": "1.0.4",
+  "description": "This is a simple server for IoT devices. It stores data from devices and provides a simple API for getting data.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "iot",
+    "server",
+    "api",
+    "data"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql": "^2.18.1"
+  }
+}
