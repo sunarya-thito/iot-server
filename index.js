@@ -1,7 +1,8 @@
 import express from 'express';
 import mysql from "mysql";
+import {version} from './package.json';
 
-const VERSION = '1.0.0';
+const VERSION = version;
 const STATUS_SUCCESS = 'success';
 const STATUS_FAILED = 'failed';
 const STATUS_ACCESS_DENIED = 'access-denied';
