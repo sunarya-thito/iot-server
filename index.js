@@ -65,7 +65,7 @@ function createTableGetFieldInfoBuilder(table) {
     // DATA_TYPE: type of the column
 }
 
-function createAlterFieldsBuilder(fields, databaseFields) {
+function createAlterFieldsBuilder(fields, databaseFields, table) {
     // fields contains
     let queryBuilder = '';
     for (let i = 0; i < fields.length; i++) {
@@ -86,7 +86,7 @@ function createAlterFieldsBuilder(fields, databaseFields) {
             if (!mappedType) {
                 throw new Error('Invalid field type: ' + type);
             }
-            queryBuilder += `ALTER TABLE data ADD ${name} ${mappedType.type};`;
+            queryBuilder += `ALTER TABLE ${table} ADD ${name} ${mappedType.type};`;
         } else {
             // check if type is same
             let mappedType = FIELD_TYPE_MAPPING[type];
@@ -95,9 +95,9 @@ function createAlterFieldsBuilder(fields, databaseFields) {
             }
             if (mappedType.type !== databaseFields[i].DATA_TYPE || mappedType.length !== databaseFields[i].CHARACTER_MAXIMUM_LENGTH) {
                 if (mappedType.length) {
-                    queryBuilder += `ALTER TABLE data MODIFY ${name} ${mappedType.type}(${mappedType.length});`;
+                    queryBuilder += `ALTER TABLE ${table} MODIFY ${name} ${mappedType.type}(${mappedType.length});`;
                 } else {
-                    queryBuilder += `ALTER TABLE data MODIFY ${name} ${mappedType.type};`;
+                    queryBuilder += `ALTER TABLE ${table} MODIFY ${name} ${mappedType.type};`;
                 }
             }
         }
@@ -118,7 +118,7 @@ function createAlterFieldsBuilder(fields, databaseFields) {
         }
         if (!found) {
             // remove field
-            queryBuilder += `ALTER TABLE data DROP COLUMN ${databaseField.COLUMN_NAME};`;
+            queryBuilder += `ALTER TABLE ${table} DROP COLUMN ${databaseField.COLUMN_NAME};`;
         }
     }
     if (queryBuilder.length > 0) {
@@ -194,7 +194,7 @@ function createDatabaseConnection(databaseType = 'mysql', {
                                 if (error) {
                                     throw error;
                                 }
-                                let alterFieldsBuilder = createAlterFieldsBuilder(fields, results);
+                                let alterFieldsBuilder = createAlterFieldsBuilder(fields, results, table);
                                 if (alterFieldsBuilder) {
                                     // alter fields
                                     connection.query(alterFieldsBuilder, (error, results, cb) => {
