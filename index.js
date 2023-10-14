@@ -1,7 +1,7 @@
 import express from 'express';
 import mysql from "mysql";
 
-const VERSION = '1.0.7';
+const VERSION = '1.0.10';
 const STATUS_SUCCESS = 'success';
 const STATUS_FAILED = 'failed';
 const STATUS_ACCESS_DENIED = 'access-denied';
