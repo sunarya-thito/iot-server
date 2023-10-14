@@ -14,7 +14,13 @@
     "api",
     "data"
   ],
-  "author": "",
+  "author": "sunarya-thito",
+  "bugs": {
+    "url": "https://github.com/sunarya-thito/iot-server/issues"
+  },
+  "repository": {
+    "url": "https://github.com/sunarya-thito/iot-server"
+  },
   "license": "ISC",
   "dependencies": {
     "express": "^4.18.2",
