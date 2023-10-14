@@ -216,6 +216,10 @@ function createDatabaseConnection(databaseType = 'mysql', {
                             fieldData.push(data[field.name]);
                         }
                     }
+                    if (availableFields.length === 0) {
+                        callback(new Error('No available fields'));
+                        return;
+                    }
                     connection.query(createDatabasePreparedStatements(availableFields), fieldData, (error, results, cb) => {
                         if (error) {
                             callback(error);
