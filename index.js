@@ -36,8 +36,8 @@ const FIELD_TYPE_MAPPING = {
         }
     },
 }
-function createDatabasePreparedStatements(fields) {
-    let queryBuilder = 'INSERT INTO data (';
+function createDatabasePreparedStatements(fields, table) {
+    let queryBuilder = `INSERT INTO ${table} (`;
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
         queryBuilder += field;
@@ -230,7 +230,7 @@ function createDatabaseConnection(databaseType = 'mysql', {
                             return;
                         }
                     }
-                    connection.query(createDatabasePreparedStatements(availableFields), fieldData, (error, results, cb) => {
+                    connection.query(createDatabasePreparedStatements(availableFields, table), fieldData, (error, results, cb) => {
                         if (error) {
                             callback(error);
                         }
