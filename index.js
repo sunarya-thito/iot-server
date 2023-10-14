@@ -1,7 +1,7 @@
 import express from 'express';
 import mysql from "mysql";
 
-const VERSION = '1.0.14';
+const VERSION = '1.0.15';
 const STATUS_SUCCESS = 'success';
 const STATUS_FAILED = 'failed';
 const STATUS_ACCESS_DENIED = 'access-denied';
@@ -20,6 +20,9 @@ const FIELD_TYPE_MAPPING = {
         'length': 255,
         validate: (value) => {
             return typeof value === 'string';
+        },
+        parse: (value) => {
+            return value;
         }
     },
     'number': {
@@ -27,12 +30,18 @@ const FIELD_TYPE_MAPPING = {
         validate: (value) => {
             value = parseInt(value);
             return !isNaN(value);
+        },
+        parse: (value) => {
+            return parseInt(value);
         }
     },
     'boolean': {
         'type': 'BOOLEAN',
         validate: (value) => {
             return typeof value === 'boolean' || value === 'true' || value === 'false';
+        },
+        parse: (value) => {
+            return value === 'true' ? 1 : 0;
         }
     },
 }
@@ -213,23 +222,29 @@ function createDatabaseConnection(databaseType = 'mysql', {
                     for (let i = 0; i < fields.length; i++) {
                         let field = fields[i];
                         if (data[field.name]) {
+                            let mappedType = FIELD_TYPE_MAPPING[field.type];
+                            if (!mappedType.validate(data[field.name])) {
+                                callback(new Error('Invalid data type for field: ' + field.name));
+                                return;
+                            }
                             availableFields.push(field.name);
-                            fieldData.push(data[field.name]);
+                            // fieldData.push(data[field.name]);
+                            fieldData.push(mappedType.parse(data[field.name]));
                         }
                     }
                     if (availableFields.length === 0) {
                         callback(new Error('No available fields'));
                         return;
                     }
-                    // validate data
-                    for (let i = 0; i < availableFields.length; i++) {
-                        let field = availableFields[i];
-                        let mappedType = FIELD_TYPE_MAPPING[fields[i].type];
-                        if (!mappedType.validate(data[field])) {
-                            callback(new Error('Invalid data type for field: ' + field));
-                            return;
-                        }
-                    }
+                    // // validate data
+                    // for (let i = 0; i < availableFields.length; i++) {
+                    //     let field = availableFields[i];
+                    //     let mappedType = FIELD_TYPE_MAPPING[fields[i].type];
+                    //     if (!mappedType.validate(data[field])) {
+                    //         callback(new Error('Invalid data type for field: ' + field));
+                    //         return;
+                    //     }
+                    // }
                     connection.query(createDatabasePreparedStatements(availableFields, table), fieldData, (error, results, cb) => {
                         if (error) {
                             callback(error);
