@@ -19,14 +19,14 @@ const FIELD_TYPE_MAPPING = {
         'type': 'VARCHAR',
         'length': 255,
         validate: (value) => {
-            value = parseInt(value);
             return typeof value === 'string';
         }
     },
     'number': {
         'type': 'DOUBLE',
         validate: (value) => {
-            return typeof value === 'number';
+            value = parseInt(value);
+            return !isNaN(value);
         }
     },
     'boolean': {
