@@ -1,7 +1,7 @@
 import express from 'express';
 import mysql from "mysql";
 
-const VERSION = '1.0.10';
+const VERSION = '1.0.11';
 const STATUS_SUCCESS = 'success';
 const STATUS_FAILED = 'failed';
 const STATUS_ACCESS_DENIED = 'access-denied';
@@ -19,6 +19,7 @@ const FIELD_TYPE_MAPPING = {
         'type': 'VARCHAR',
         'length': 255,
         validate: (value) => {
+            value = parseInt(value);
             return typeof value === 'string';
         }
     },
@@ -31,7 +32,7 @@ const FIELD_TYPE_MAPPING = {
     'boolean': {
         'type': 'BOOLEAN',
         validate: (value) => {
-            return typeof value === 'boolean';
+            return typeof value === 'boolean' || value === 'true' || value === 'false';
         }
     },
 }
