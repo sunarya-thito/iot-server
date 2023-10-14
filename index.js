@@ -1,7 +1,7 @@
 import express from 'express';
 import mysql from "mysql";
 
-const VERSION = '1.0.15';
+const VERSION = '1.0.16';
 const STATUS_SUCCESS = 'success';
 const STATUS_FAILED = 'failed';
 const STATUS_ACCESS_DENIED = 'access-denied';
@@ -256,7 +256,7 @@ function createDatabaseConnection(databaseType = 'mysql', {
                     connection.end();
                 },
                 get: (beforeDate, afterDate, maxQuery, callback) => {
-                    let queryBuilder = 'SELECT * FROM data';
+                    let queryBuilder = `SELECT * FROM ${table}`;
                     let fieldData = [];
                     if (beforeDate && afterDate) {
                         queryBuilder += ' WHERE date < ? AND date > ?';
