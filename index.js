@@ -220,6 +220,15 @@ function createDatabaseConnection(databaseType = 'mysql', {
                         callback(new Error('No available fields'));
                         return;
                     }
+                    // validate data
+                    for (let i = 0; i < availableFields.length; i++) {
+                        let field = availableFields[i];
+                        let mappedType = FIELD_TYPE_MAPPING[fields[i].type];
+                        if (!mappedType.validate(data[field])) {
+                            callback(new Error('Invalid data type for field: ' + field));
+                            return;
+                        }
+                    }
                     connection.query(createDatabasePreparedStatements(availableFields), fieldData, (error, results, cb) => {
                         if (error) {
                             callback(error);
