@@ -63,10 +63,15 @@ The server can be configured with the following options:
         - `number` - A number.
         - `string` - A string.
         - `boolean` - A boolean.
+- `queries` - Map of endpoints
+  - `{endpoint}` - The name of the endpoint.
+    - `query` - The query to execute.
+    - `serializer` - The serializer to use. (Optional)
+    - `validators` - The validators to use. (Optional)
+      - `{field name}` - The function to validate specific field value
 - `secret` - The secret API key.
 - `payloadType` - The type of the payload. The following types are available:
     - `json` - A JSON payload.
-- `payloadLimit` - The maximum number of payloads to return.
 
 ## API
 The server provides the following API:
@@ -130,4 +135,80 @@ http://localhost:3000/status?beforeDate=2020-01-01T00:00:00.000Z&afterDate=2020-
 ```
 ```
 http://localhost:3000/data?temperature=20&status=working&active=true
+```
+
+## Example Code
+```javascript
+import startServer from "./iot-server.js";
+
+startServer(
+    {
+        // Port yang digunakan untuk mengakses server
+        serverPort: 80,
+        // Konfigurasi database
+        database: {
+            type: 'mysql',
+            host: 'localhost',
+            port: 3306,
+            name: 'iot',
+            user: 'root',
+            password: '',
+            table: 'tb_cuaca',
+            date_field: 'ts',
+        },
+        // Membatasi jumlah request yang dapat dilakukan dalam satu waktu
+        // Jika melebihi batas, maka request akan ditolak
+        // (dalam milidetik)
+        rateLimit: 10000,
+        allowAlterTable: false,
+        // Berisi daftar fields yang ada pada tabel
+        fields: [
+            {
+                // Nama field
+                name: 'suhu',
+                // Tipe data field
+                type: 'float',
+            },
+            {
+                name: 'humid',
+                type: 'float',
+            },
+            {
+                name: 'lux',
+                type: 'float',
+            },
+        ],
+        // Endpoint yang dapat diakses
+        queries: {
+            // Endpoint senddata (Contoh: http://localhost:8080/senddata?temp=20&humid=30&light=40)
+            senddata: {
+                query: 'INSERT INTO {table}(suhu, kelembapan, lux) VALUES ({temp}, {humid}, {light})',
+                serializer: results => {
+                    return results.length;
+                },
+                validators: {
+                    suhu: value => {
+                        return value >= 0 && value <= 100;
+                    }
+                }
+            },
+            // Endpoint getdata (Contoh: http://localhost:8080/getdata)
+            getalldata: 'SELECT * FROM {table}',
+            getlatestdata: 'SELECT * FROM {table} ORDER BY date DESC LIMIT 1',
+            gethottestdate: 'SELECT {date} FROM {table} WHERE suhu = (SELECT MAX(suhu) FROM {table}) GROUP BY {date}',
+        },
+        secret: ip => {
+            switch (ip) {
+                // Jika diakses dari localhost, maka tidak perlu secret
+                case '127.0.0.1':
+                    return null;
+                default:
+                    // Jika diakses dari luar, maka secret adalah string berikut
+                    return 'abcdefghijklmnopqrstuvwxyz';
+            }
+        },
+        // Payload yang akan dikirimkan ke client
+        payloadType: 'text',
+    }
+);
 ```
