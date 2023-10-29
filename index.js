@@ -323,6 +323,7 @@ function validateFields(fields) {
  * @param secret - Secret key yang digunakan untuk mengakses server
  * @param rateLimit - Batas waktu untuk mengakses server
  * @param payloadType - Tipe data payload
+ * @param payloadPrettify - Jika true, maka payload akan dikirimkan dalam bentuk yang mudah dibaca
  * @param callback - Fungsi yang akan dipanggil ketika server sudah berjalan
  * @returns {{setSecret: setSecret, getRateLimits: (function(): number), close: close}} - Objek yang berisi fungsi-fungsi yang dapat digunakan untuk mengubah konfigurasi server
  */
@@ -351,6 +352,7 @@ export default function startServer({
                                         },
                                         rateLimit = -1,
                                         payloadType = 'json',
+                                        payloadPrettify = false,
                                     }, callback = function() {}) {
     // Validasi field-field
     validateFields(fields);
@@ -373,7 +375,7 @@ export default function startServer({
             if (key === ip) {
                 let now = Date.now();
                 if (now - rateLimitTime < rateLimit) {
-                    return now - rateLimitTime;
+                    return rateLimit - (now - rateLimitTime);
                 }
             }
         }
@@ -403,14 +405,10 @@ export default function startServer({
         case "json":
             // Mengubah payload menjadi JSON
             app.use(express.json());
-            break;
-        case "raw":
-            // Mengubah payload menjadi raw
-            app.use(express.raw());
-            break;
-        case "text":
-            // Mengubah payload menjadi text
-            app.use(express.text());
+            if (payloadPrettify) {
+                // Mengubah payload menjadi JSON yang mudah dibaca
+                app.set('json spaces', 2);
+            }
             break;
         default:
             // Jika payload tidak valid, maka kirimkan error
