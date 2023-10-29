@@ -449,6 +449,7 @@ export default function startServer({
         // Carilah field-field yang ada dalam query
         // Bentuk field-field adalah {field}
         let matches = queryBuilder.match(/{(.*?)}/g);
+        let variables = [];
         if (matches) {
             for (let i = 0; i < matches.length; i++) {
                 let match = matches[i];
@@ -457,6 +458,11 @@ export default function startServer({
                 if (field === 'table') continue;
                 if (field.startsWith('fields[') && field.endsWith(']')) continue;
                 if (field === 'date') continue;
+                if (field.startsWith(':')) { // it means, it is a variable that has to be replaced immediately (not prepared statement)
+                    let variableName = field.substring(1);
+                    variables.push(variableName);
+                    continue;
+                }
                 variableOrder.push({
                     name: field,
                 });
@@ -479,76 +485,114 @@ export default function startServer({
             variableValidators: variableValidators,
             valueSerializer: valueSerializer,
             valuePreprocessor: valuePreprocessor,
+            variables: variables,
         };
     }
     for (let key in customQueryMap) {
         app.get(`/${key}`, (request, response) => {
-            let secretKey = request.query['secret'];
-            if (!checkSecretKey(secretKey)) {
-                response.status(STATUS_CODE_ACCESS_DENIED).send({
-                    status: STATUS_ACCESS_DENIED,
-                    message: 'Access denied'
-                });
-                return;
-            }
-            let rateLimitTime = rateLimitCheck(request.ip);
-            if (rateLimitTime) {
-                response.status(STATUS_CODE_RATE_LIMITED).send({
-                    status: STATUS_RATE_LIMITED,
-                    message: 'Rate limited',
-                    time: rateLimitTime
-                });
-                return;
-            }
-            let fieldData = [];
-            let queryMapElement = customQueryMap[key];
-            let queryBuilder = queryMapElement.query;
-            let variableOrder = queryMapElement.variableOrder;
-            for (let i = 0; i < variableOrder.length; i++) {
-                let field = variableOrder[i];
-                // skip predefined variables
-                let value = request.query[field.name];
-                if (!value) {
-                    response.status(STATUS_CODE_FAILED).send({
-                        status: STATUS_FAILED,
-                        message: 'Missing field: ' + field.name
+            try {
+                let secretKey = request.query['secret'];
+                if (!checkSecretKey(secretKey)) {
+                    response.status(STATUS_CODE_ACCESS_DENIED).send({
+                        status: STATUS_ACCESS_DENIED,
+                        message: 'Access denied'
                     });
                     return;
                 }
-                let validator = queryMapElement.variableValidators[field.name];
-                if (validator) {
-                    if (!validator(value)) {
+                let rateLimitTime = rateLimitCheck(request.ip);
+                if (rateLimitTime) {
+                    response.status(STATUS_CODE_RATE_LIMITED).send({
+                        status: STATUS_RATE_LIMITED,
+                        message: 'Rate limited',
+                        time: rateLimitTime
+                    });
+                    return;
+                }
+                let fieldData = [];
+                let queryMapElement = customQueryMap[key];
+                let queryBuilder = queryMapElement.query;
+                let variableOrder = queryMapElement.variableOrder;
+                let variables = queryMapElement.variables;
+                // replace literal variables with their values
+                for (let i = 0; i < variables.length; i++) {
+                    let variableName = variables[i];
+                    let value = request.query[variableName];
+                    if (!value) {
                         response.status(STATUS_CODE_FAILED).send({
                             status: STATUS_FAILED,
-                            message: 'Invalid field value: ' + field.name
+                            message: 'Missing field: ' + variableName
                         });
                         return;
                     }
-                }
-                if (queryMapElement.valuePreprocessor) {
-                    let preprocessor = queryMapElement.valuePreprocessor[field.name];
-                    if (preprocessor) {
-                        value = preprocessor(value);
+                    let validator = queryMapElement.variableValidators[variableName];
+                    if (validator) {
+                        if (!validator(value)) {
+                            response.status(STATUS_CODE_FAILED).send({
+                                status: STATUS_FAILED,
+                                message: 'Invalid field value: ' + variableName
+                            });
+                            return;
+                        }
                     }
+                    if (queryMapElement.valuePreprocessor) {
+                        let preprocessor = queryMapElement.valuePreprocessor[variableName];
+                        if (preprocessor) {
+                            value = preprocessor(value);
+                        }
+                    }
+                    queryBuilder = queryBuilder.replaceAll(`{:${variableName}}`, value);
                 }
-                fieldData.push(value);
-            }
-            databaseConnection.query(queryBuilder, fieldData, (error, results) => {
-                if (error) {
-                    response.status(STATUS_CODE_FAILED).send({
-                        status: STATUS_FAILED,
-                        message: error.message
+                for (let i = 0; i < variableOrder.length; i++) {
+                    let field = variableOrder[i];
+                    // skip predefined variables
+                    let value = request.query[field.name];
+                    if (!value) {
+                        response.status(STATUS_CODE_FAILED).send({
+                            status: STATUS_FAILED,
+                            message: 'Missing field: ' + field.name
+                        });
+                        return;
+                    }
+                    let validator = queryMapElement.variableValidators[field.name];
+                    if (validator) {
+                        if (!validator(value)) {
+                            response.status(STATUS_CODE_FAILED).send({
+                                status: STATUS_FAILED,
+                                message: 'Invalid field value: ' + field.name
+                            });
+                            return;
+                        }
+                    }
+                    if (queryMapElement.valuePreprocessor) {
+                        let preprocessor = queryMapElement.valuePreprocessor[field.name];
+                        if (preprocessor) {
+                            value = preprocessor(value);
+                        }
+                    }
+                    fieldData.push(value);
+                }
+                databaseConnection.query(queryBuilder, fieldData, (error, results) => {
+                    if (error) {
+                        response.status(STATUS_CODE_FAILED).send({
+                            status: STATUS_FAILED,
+                            message: error.message
+                        });
+                        return;
+                    }
+                    if (queryMapElement.valueSerializer) {
+                        results = queryMapElement.valueSerializer(results);
+                    }
+                    response.status(STATUS_CODE_SUCCESS).send({
+                        status: STATUS_SUCCESS,
+                        data: results
                     });
-                    return;
-                }
-                if (queryMapElement.valueSerializer) {
-                    results = queryMapElement.valueSerializer(results);
-                }
-                response.status(STATUS_CODE_SUCCESS).send({
-                    status: STATUS_SUCCESS,
-                    data: results
                 });
-            });
+            } catch (e) {
+                response.status(STATUS_CODE_FAILED).send({
+                    status: STATUS_FAILED,
+                    message: e
+                });
+            }
         });
     }
     let server = app.listen(serverPort, () => {
