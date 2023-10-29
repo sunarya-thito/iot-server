@@ -456,6 +456,7 @@ export default function startServer({
                 // prevent pushing special variables
                 if (field === 'table') continue;
                 if (field.startsWith('fields[') && field.endsWith(']')) continue;
+                if (field === 'date') continue;
                 variableOrder.push({
                     name: field,
                 });
@@ -505,6 +506,7 @@ export default function startServer({
             let variableOrder = queryMapElement.variableOrder;
             for (let i = 0; i < variableOrder.length; i++) {
                 let field = variableOrder[i];
+                // skip predefined variables
                 let value = request.query[field.name];
                 if (!value) {
                     response.status(STATUS_CODE_FAILED).send({
